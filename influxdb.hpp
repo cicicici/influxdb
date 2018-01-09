@@ -13,8 +13,10 @@
 
 #define FMT_BUF_LEN 25 // double 24 bytes, int64_t 20 bytes
 #define FMT_APPEND(args...) \
-    lines_.resize(lines_.length() + FMT_BUF_LEN);\
-    lines_.resize(lines_.length() - FMT_BUF_LEN + snprintf(&lines_[lines_.length() - FMT_BUF_LEN], FMT_BUF_LEN, ##args));
+    { \
+        lines_.resize(lines_.length() + FMT_BUF_LEN);\
+        lines_.resize(lines_.length() - FMT_BUF_LEN + snprintf(&lines_[lines_.length() - FMT_BUF_LEN], FMT_BUF_LEN, ##args)); \
+    }
 
 namespace influxdb_cpp {
     struct server_info {
