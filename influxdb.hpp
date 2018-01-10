@@ -140,10 +140,14 @@ namespace influxdb_cpp {
             detail::field_caller& field(const std::string& k, const std::string& v)        { return builder::_f_s(' ', k, v); }
             detail::field_caller& field(const std::string& k, bool v)                 { return builder::_f_b(' ', k, v); }
             detail::field_caller& field(const std::string& k, short v)                { return builder::_f_i(' ', k, v); }
+            detail::field_caller& field(const std::string& k, unsigned short v)       { return builder::_f_i(' ', k, v); }
             detail::field_caller& field(const std::string& k, int v)                  { return builder::_f_i(' ', k, v); }
+            detail::field_caller& field(const std::string& k, unsigned int v)         { return builder::_f_i(' ', k, v); }
             detail::field_caller& field(const std::string& k, long v)                 { return builder::_f_i(' ', k, v); }
+            detail::field_caller& field(const std::string& k, unsigned long v)        { return builder::_f_i(' ', k, v); }
             detail::field_caller& field(const std::string& k, long long v)            { return builder::_f_i(' ', k, v); }
-            detail::field_caller& field(const std::string& k, double v, int prec = 2) { return builder::_f_f(' ', k, v, prec); }
+            detail::field_caller& field(const std::string& k, unsigned long long v)   { return builder::_f_i(' ', k, v); }
+            detail::field_caller& field(const std::string& k, double v, int prec = 8) { return builder::_f_f(' ', k, v, prec); }
         private:
             detail::tag_caller& meas(const std::string& m);
         };
@@ -158,10 +162,14 @@ namespace influxdb_cpp {
             detail::field_caller& field(const std::string& k, const std::string& v)        { return builder::_f_s(',', k, v); }
             detail::field_caller& field(const std::string& k, bool v)                 { return builder::_f_b(',', k, v); }
             detail::field_caller& field(const std::string& k, short v)                { return builder::_f_i(',', k, v); }
+            detail::field_caller& field(const std::string& k, unsigned short v)       { return builder::_f_i(',', k, v); }
             detail::field_caller& field(const std::string& k, int v)                  { return builder::_f_i(',', k, v); }
+            detail::field_caller& field(const std::string& k, unsigned int v)         { return builder::_f_i(',', k, v); }
             detail::field_caller& field(const std::string& k, long v)                 { return builder::_f_i(',', k, v); }
+            detail::field_caller& field(const std::string& k, unsigned long v)        { return builder::_f_i(',', k, v); }
             detail::field_caller& field(const std::string& k, long long v)            { return builder::_f_i(',', k, v); }
-            detail::field_caller& field(const std::string& k, double v, int prec = 2) { return builder::_f_f(',', k, v, prec); }
+            detail::field_caller& field(const std::string& k, unsigned long long v)   { return builder::_f_i(',', k, v); }
+            detail::field_caller& field(const std::string& k, double v, int prec = 8) { return builder::_f_f(',', k, v, prec); }
             detail::ts_caller& timestamp(unsigned long long ts)                  { return builder::_ts(ts); }
         };
 
