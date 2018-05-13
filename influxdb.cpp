@@ -1,12 +1,5 @@
 #include <influxdb/influxdb.hpp>
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
-#include <sys/uio.h>
 
 namespace influxdb_cpp {
 
@@ -16,15 +9,19 @@ namespace influxdb_cpp {
         return detail::http_request("GET", "query", qs, "", si, &resp);
     }
 
+    int create_db(std::string& resp, const std::string& db_name, const server_info& si) {
+        std::string qs("&q=create+database+");
+        detail::url_encode(qs, db_name);
+        return detail::http_request("POST", "query", qs, "", si, &resp);
+    }
+
     namespace detail {
 
-        unsigned char to_hex(unsigned char x)
-        {
+        unsigned char to_hex(unsigned char x) {
             return  x > 9 ? x + 55 : x + 48;
         }
 
-        void url_encode(std::string& out, const std::string& src)
-        {
+        void url_encode(std::string& out, const std::string& src) {
             size_t pos = 0, start = 0;
             while((pos = src.find_first_not_of("abcdefghijklmnopqrstuvwxyqABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~", start)) != std::string::npos) {
                 out.append(src.c_str() + start, pos - start);
@@ -47,7 +44,7 @@ namespace influxdb_cpp {
             struct sockaddr_in addr;
             int sock, ret_code = 0, content_length = 0, len = 0;
             char ch;
-            int chunked = 0;
+            bool chunked = false;
 
             addr.sin_family = AF_INET;
             addr.sin_port = htons(si.port_);
@@ -58,7 +55,7 @@ namespace influxdb_cpp {
                 return -2;
 
             if(connect(sock, (struct sockaddr*)(&addr), sizeof(addr)) < 0) {
-                close(sock);
+                closesocket(sock);
                 return -3;
             }
 
@@ -66,9 +63,9 @@ namespace influxdb_cpp {
 
             for(;;) {
                 iv[0].iov_len = snprintf(&header[0], len,
-                    "%s /%s?db=%s&u=%s&p=%s%s HTTP/1.1\r\nHost: %s\r\nContent-Length: %zd\r\n\r\n",
+                    "%s /%s?db=%s&u=%s&p=%s%s HTTP/1.1\r\nHost: %s\r\nContent-Length: %d\r\n\r\n",
                     method, uri, si.db_.c_str(), si.usr_.c_str(), si.pwd_.c_str(),
-                    querystring.c_str(), si.host_.c_str(), body.length());
+                    querystring.c_str(), si.host_.c_str(), (int)body.length());
                 if((int)iv[0].iov_len > len)
                     header.resize(len *= 2);
                 else
@@ -97,6 +94,8 @@ namespace influxdb_cpp {
 #define _(c) if((_GET_NEXT_CHAR()) != c) break;
 #define __(c) if((_GET_NEXT_CHAR()) != c) { ret_code = -9; goto END; }
 
+            if(resp) resp->clear();
+
             _UNTIL(' ')_GET_NUMBER(ret_code)
             for(;;) {
                 _UNTIL('\n')
@@ -108,18 +107,18 @@ namespace influxdb_cpp {
                     case 'T':_('r')_('a')_('n')_('s')_('f')_('e')_('r')_('-')
                         _('E')_('n')_('c')_('o')_('d')_('i')_('n')_('g')_(':')
                         _(' ')_('c')_('h')_('u')_('n')_('k')_('e')_('d')
-                        chunked = 1;
+                        chunked = true;
                         break;
                     case '\r':__('\n')
                         switch(chunked) {
                             do {__('\r')__('\n')
-                            case 1:
+                            case true:
                                 _GET_CHUNKED_LEN(content_length, '\r')__('\n')
                                 if(!content_length) {
                                     __('\r')__('\n')
                                     goto END;
                                 }
-                            case 0:
+                            case false:
                                 while(content_length > 0 && !_NO_MORE()) {
                                     content_length -= (iv[1].iov_len = std::min(content_length, (int)iv[0].iov_len - len));
                                     if(resp) resp->append(&header[len], iv[1].iov_len);
@@ -136,7 +135,7 @@ namespace influxdb_cpp {
             }
             ret_code = -11;
         END:
-            close(sock);
+            closesocket(sock);
             return ret_code / 100 == 2 ? 0 : ret_code;
 #undef _NO_MORE
 #undef _GET_NEXT_CHAR

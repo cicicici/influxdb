@@ -3,19 +3,31 @@
 
 #include <string>
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/uio.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#ifdef _WIN32
+    #define NOMINMAX
+    #include <windows.h>
+    #include <algorithm>
+    #pragma comment(lib, "ws2_32")
+    typedef struct iovec { void* iov_base; size_t iov_len; } iovec;
+    inline __int64 writev(int sock, struct iovec* iov, int cnt) {
+        __int64 r = send(sock, (const char*)iov->iov_base, iov->iov_len, 0);
+        return (r < 0 || cnt == 1) ? r : r + writev(sock, iov + 1, cnt - 1);
+    }
+#else
+    #include <unistd.h>
+    #include <sys/types.h>
+    #include <sys/socket.h>
+    #include <sys/uio.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #define closesocket close
+#endif
 
-
-#define FMT_BUF_LEN 25 // double 24 bytes, int64_t 20 bytes
-#define FMT_APPEND(args...) \
+#define FMT_BUF_LEN 25 // double 24 bytes, int64_t 21 bytes
+#define FMT_APPEND(...) \
     { \
         lines_.resize(lines_.length() + FMT_BUF_LEN);\
-        lines_.resize(lines_.length() - FMT_BUF_LEN + snprintf(&lines_[lines_.length() - FMT_BUF_LEN], FMT_BUF_LEN, ##args)); \
+        lines_.resize(lines_.length() - FMT_BUF_LEN + snprintf(&lines_[lines_.length() - FMT_BUF_LEN], FMT_BUF_LEN, ##__VA_ARGS__)); \
     }
 
 namespace influxdb_cpp {
@@ -26,26 +38,23 @@ namespace influxdb_cpp {
         std::string usr_;
         std::string pwd_;
         server_info(const std::string& host, int port, const std::string& db = "", const std::string& usr = "", const std::string& pwd = "")
-            : host_(host), port_(port), db_(db), usr_(usr), pwd_(pwd)
-        {
-        }
-        server_info()
-        {
-        }
+            : host_(host), port_(port), db_(db), usr_(usr), pwd_(pwd) {}
+
+        server_info() {}
     };
     namespace detail {
         struct meas_caller;
         struct tag_caller;
         struct field_caller;
         struct ts_caller;
-        int http_request(const char*, const char*, const std::string&, const std::string&, const server_info&, std::string* = NULL);
+        int http_request(const char*, const char*, const std::string&, const std::string&, const server_info&, std::string*);
         void url_encode(std::string&, const std::string&);
     }
 
     int query(std::string& resp, const std::string& query, const server_info& si);
+    int create_db(std::string& resp, const std::string& db_name, const server_info& si);
 
-    class builder
-    {
+    class builder {
     public:
         detail::tag_caller& meas(const std::string& m) {
             lines_.clear();
@@ -98,8 +107,8 @@ namespace influxdb_cpp {
                 FMT_APPEND(" %lld", ts);
             return (detail::ts_caller&)*this;
         }
-        int _post_http(const server_info& si) {
-            return detail::http_request("POST", "write", "", lines_, si);
+        int _post_http(const server_info& si, std::string* resp) {
+            return detail::http_request("POST", "write", "", lines_, si, resp);
         }
         int _send_udp(const std::string& host, int port) {
             int sock, ret = 0;
@@ -116,7 +125,7 @@ namespace influxdb_cpp {
             if(sendto(sock, &lines_[0], lines_.length(), 0, (struct sockaddr *)&addr, sizeof(addr)) < (int)lines_.length())
                 ret = -3;
 
-            close(sock);
+            closesocket(sock);
             return ret;
         }
         void _escape(const std::string& src, const char* escape_seq) {
@@ -134,43 +143,40 @@ namespace influxdb_cpp {
     };
 
     namespace detail {
-        struct tag_caller : public builder
-        {
-            detail::tag_caller& tag(const std::string& k, const std::string& v)            { return builder::_t(k, v); }
-            detail::field_caller& field(const std::string& k, const std::string& v)        { return builder::_f_s(' ', k, v); }
-            detail::field_caller& field(const std::string& k, bool v)                 { return builder::_f_b(' ', k, v); }
-            detail::field_caller& field(const std::string& k, short v)                { return builder::_f_i(' ', k, v); }
-            detail::field_caller& field(const std::string& k, unsigned short v)       { return builder::_f_i(' ', k, v); }
-            detail::field_caller& field(const std::string& k, int v)                  { return builder::_f_i(' ', k, v); }
-            detail::field_caller& field(const std::string& k, unsigned int v)         { return builder::_f_i(' ', k, v); }
-            detail::field_caller& field(const std::string& k, long v)                 { return builder::_f_i(' ', k, v); }
-            detail::field_caller& field(const std::string& k, unsigned long v)        { return builder::_f_i(' ', k, v); }
-            detail::field_caller& field(const std::string& k, long long v)            { return builder::_f_i(' ', k, v); }
-            detail::field_caller& field(const std::string& k, unsigned long long v)   { return builder::_f_i(' ', k, v); }
-            detail::field_caller& field(const std::string& k, double v, int prec = 8) { return builder::_f_f(' ', k, v, prec); }
+        struct tag_caller : public builder {
+            detail::tag_caller& tag(const std::string& k, const std::string& v)         { return _t(k, v); }
+            detail::field_caller& field(const std::string& k, const std::string& v)     { return _f_s(' ', k, v); }
+            detail::field_caller& field(const std::string& k, bool v)                   { return _f_b(' ', k, v); }
+            detail::field_caller& field(const std::string& k, short v)                  { return _f_i(' ', k, v); }
+            detail::field_caller& field(const std::string& k, unsigned short v)         { return _f_i(' ', k, v); }
+            detail::field_caller& field(const std::string& k, int v)                    { return _f_i(' ', k, v); }
+            detail::field_caller& field(const std::string& k, unsigned int v)           { return _f_i(' ', k, v); }
+            detail::field_caller& field(const std::string& k, long v)                   { return _f_i(' ', k, v); }
+            detail::field_caller& field(const std::string& k, unsigned long v)          { return _f_i(' ', k, v); }
+            detail::field_caller& field(const std::string& k, long long v)              { return _f_i(' ', k, v); }
+            detail::field_caller& field(const std::string& k, unsigned long long v)     { return _f_i(' ', k, v); }
+            detail::field_caller& field(const std::string& k, double v, int prec = 8)   { return _f_f(' ', k, v, prec); }
         private:
             detail::tag_caller& meas(const std::string& m);
         };
-        struct ts_caller : public builder
-        {
-            detail::tag_caller& meas(const std::string& m)                            { lines_ += '\n'; return builder::_m(m); }
-            int post_http(const server_info& si)                                 { return builder::_post_http(si); }
-            int send_udp(const std::string& host, int port)                           { return builder::_send_udp(host, port); }
+        struct ts_caller : public builder {
+            detail::tag_caller& meas(const std::string& m)                              { lines_ += '\n'; return _m(m); }
+            int post_http(const server_info& si, std::string* resp = NULL)              { return _post_http(si, resp); }
+            int send_udp(const std::string& host, int port)                             { return _send_udp(host, port); }
         };
-        struct field_caller : public ts_caller
-        {
-            detail::field_caller& field(const std::string& k, const std::string& v)        { return builder::_f_s(',', k, v); }
-            detail::field_caller& field(const std::string& k, bool v)                 { return builder::_f_b(',', k, v); }
-            detail::field_caller& field(const std::string& k, short v)                { return builder::_f_i(',', k, v); }
-            detail::field_caller& field(const std::string& k, unsigned short v)       { return builder::_f_i(',', k, v); }
-            detail::field_caller& field(const std::string& k, int v)                  { return builder::_f_i(',', k, v); }
-            detail::field_caller& field(const std::string& k, unsigned int v)         { return builder::_f_i(',', k, v); }
-            detail::field_caller& field(const std::string& k, long v)                 { return builder::_f_i(',', k, v); }
-            detail::field_caller& field(const std::string& k, unsigned long v)        { return builder::_f_i(',', k, v); }
-            detail::field_caller& field(const std::string& k, long long v)            { return builder::_f_i(',', k, v); }
-            detail::field_caller& field(const std::string& k, unsigned long long v)   { return builder::_f_i(',', k, v); }
-            detail::field_caller& field(const std::string& k, double v, int prec = 8) { return builder::_f_f(',', k, v, prec); }
-            detail::ts_caller& timestamp(unsigned long long ts)                  { return builder::_ts(ts); }
+        struct field_caller : public ts_caller {
+            detail::field_caller& field(const std::string& k, const std::string& v)     { return _f_s(',', k, v); }
+            detail::field_caller& field(const std::string& k, bool v)                   { return _f_b(',', k, v); }
+            detail::field_caller& field(const std::string& k, short v)                  { return _f_i(',', k, v); }
+            detail::field_caller& field(const std::string& k, unsigned short v)         { return _f_i(',', k, v); }
+            detail::field_caller& field(const std::string& k, int v)                    { return _f_i(',', k, v); }
+            detail::field_caller& field(const std::string& k, unsigned int v)           { return _f_i(',', k, v); }
+            detail::field_caller& field(const std::string& k, long v)                   { return _f_i(',', k, v); }
+            detail::field_caller& field(const std::string& k, unsigned long v)          { return _f_i(',', k, v); }
+            detail::field_caller& field(const std::string& k, long long v)              { return _f_i(',', k, v); }
+            detail::field_caller& field(const std::string& k, unsigned long long v)     { return _f_i(',', k, v); }
+            detail::field_caller& field(const std::string& k, double v, int prec = 8)   { return _f_f(',', k, v, prec); }
+            detail::ts_caller& timestamp(unsigned long long ts)                         { return _ts(ts); }
         };
 
         unsigned char to_hex(unsigned char x);
@@ -180,5 +186,7 @@ namespace influxdb_cpp {
     }
 }
 
+#undef FMT_BUF_LEN
+#undef FMT_APPEND
 #endif
 

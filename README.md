@@ -3,6 +3,7 @@
 A header-only C++ query & write client for InfluxDB.
 
 [![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](https://github.com/orca-zhang/influxdb-cpp/blob/master/LICENSE)
+[![Build Status](https://semaphoreci.com/api/v1/orca-zhang-91/influxdb-cpp/branches/master/shields_badge.svg)](https://semaphoreci.com/orca-zhang-91/influxdb-cpp)
 
 - Support versions:
   - InfluxDB v0.9 ~ 1.4
@@ -29,9 +30,9 @@ A header-only C++ query & write client for InfluxDB.
     #include "influxdb.hpp"
     ```
 
-#### Write example
+#### Writing example
 
-- You should according to the [write syntax](https://docs.influxdata.com/influxdb/v1.4/write_protocols/line_protocol_reference/) while writing series(metrics).
+- You should refer to the [write syntax](https://docs.influxdata.com/influxdb/v1.4/write_protocols/line_protocol_reference/) while writing series(metrics).
 
     ```
     measurement[,tag-key=tag-value...] field-key=field-value[,field2-key=field2-value...] [unix-nano-timestamp]
@@ -54,7 +55,7 @@ A header-only C++ query & write client for InfluxDB.
         .post_http(si);
     ```
 
-  - **NOTE**: 
+  - **NOTICE**: 
     - 3rd parameter `precision` of `field()` is optional for floating point value, and default precision is `2`. 
     - `usr` and `pwd` is optional for authorization.
 
@@ -67,14 +68,13 @@ A header-only C++ query & write client for InfluxDB.
 - You could change `post_http` to `send_udp` for udp request. And only `host` and `port` is required for udp.
 
     ```cpp
-    influxdb_cpp::server_info si("127.0.0.1", 8091);
     influxdb_cpp::builder()
         .meas("foo")
         .field("x", 10)
-        .send_udp(si);
+        .send_udp("127.0.0.1", 8091);
     ```
 
-- Bulk/batch/multiple insert is also support:
+- Bulk/batch/multiple insert also supports:
 
     ```cpp
     influxdb_cpp::builder()
@@ -83,7 +83,7 @@ A header-only C++ query & write client for InfluxDB.
 
         .meas("bar")  // series 2
         .field("y", 10.3)
-        .send_udp(si);
+        .send_udp("127.0.0.1", 8091);
     ```
 
 - The series sent are:
@@ -104,12 +104,12 @@ A header-only C++ query & write client for InfluxDB.
     influxdb_cpp::query(resp, "select * from t", si);
     ```
 
+- You can use [xpjson](https://github.com/ez8-co/xpjson) to parse the result refer to [issue #3](https://github.com/orca-zhang/influxdb-cpp/issues/3).
+
 ### TODO
 
 - Add more test cases.
 - Supports DSN initializatin for server_info.
-- Add query response parse tutorial.
-- Support Windows.
 - Do not need to connect every time.
 
 ### Misc
