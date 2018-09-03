@@ -5,23 +5,23 @@ namespace influxdb_cpp {
 
     int query(std::string& resp, const std::string& query, const server_info& si) {
         std::string qs("&q=");
-        detail::url_encode(qs, query);
-        return detail::http_request("GET", "query", qs, "", si, &resp);
+        detail::inner::url_encode(qs, query);
+        return detail::inner::http_request("GET", "query", qs, "", si, &resp);
     }
 
     int create_db(std::string& resp, const std::string& db_name, const server_info& si) {
         std::string qs("&q=create+database+");
-        detail::url_encode(qs, db_name);
-        return detail::http_request("POST", "query", qs, "", si, &resp);
+        detail::inner::url_encode(qs, db_name);
+        return detail::inner::http_request("POST", "query", qs, "", si, &resp);
     }
 
     namespace detail {
 
-        unsigned char to_hex(unsigned char x) {
+        unsigned char inner::to_hex(unsigned char x) {
             return  x > 9 ? x + 55 : x + 48;
         }
 
-        void url_encode(std::string& out, const std::string& src) {
+        void inner::url_encode(std::string& out, const std::string& src) {
             size_t pos = 0, start = 0;
             while((pos = src.find_first_not_of("abcdefghijklmnopqrstuvwxyqABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.~", start)) != std::string::npos) {
                 out.append(src.c_str() + start, pos - start);
@@ -37,7 +37,7 @@ namespace influxdb_cpp {
             out.append(src.c_str() + start, src.length() - start);
         }
 
-        int http_request(const char* method, const char* uri,
+        int inner::http_request(const char* method, const char* uri,
             const std::string& querystring, const std::string& body, const server_info& si, std::string* resp) {
             std::string header;
             struct iovec iv[2];
@@ -83,7 +83,7 @@ namespace influxdb_cpp {
             iv[0].iov_len = len;
 
 #define _NO_MORE() (len >= (int)iv[0].iov_len && \
-    (iv[0].iov_len = recv(sock, &header[0], header.length(), len = 0)) == size_t(-1))
+            (iv[0].iov_len = recv(sock, &header[0], header.length(), len = 0)) == size_t(-1))
 #define _GET_NEXT_CHAR() (ch = _NO_MORE() ? 0 : header[len++])
 #define _LOOP_NEXT(statement) for(;;) { if(!(_GET_NEXT_CHAR())) { ret_code = -7; goto END; } statement }
 #define _UNTIL(c) _LOOP_NEXT( if(ch == c) break; )

@@ -2,6 +2,8 @@
 #define __INFLUXDB_CPP_H
 
 #include <string>
+#include <cstring>
+#include <cstdio>
 
 #ifdef _WIN32
     #define NOMINMAX
@@ -39,23 +41,23 @@ namespace influxdb_cpp {
         std::string pwd_;
         server_info(const std::string& host, int port, const std::string& db = "", const std::string& usr = "", const std::string& pwd = "")
             : host_(host), port_(port), db_(db), usr_(usr), pwd_(pwd) {}
-
-        server_info() {}
     };
     namespace detail {
         struct meas_caller;
         struct tag_caller;
         struct field_caller;
         struct ts_caller;
-        int http_request(const char*, const char*, const std::string&, const std::string&, const server_info&, std::string*);
-        void url_encode(std::string&, const std::string&);
+        struct inner {
+            static int http_request(const char*, const char*, const std::string&, const std::string&, const server_info&, std::string*);
+            static unsigned char to_hex(unsigned char x);
+            static void url_encode(std::string& out, const std::string& src);
+        };
     }
 
     int query(std::string& resp, const std::string& query, const server_info& si);
     int create_db(std::string& resp, const std::string& db_name, const server_info& si);
 
-    class builder {
-    public:
+    struct builder {
         detail::tag_caller& meas(const std::string& m) {
             lines_.clear();
             lines_.reserve(0x100);
@@ -108,7 +110,7 @@ namespace influxdb_cpp {
             return (detail::ts_caller&)*this;
         }
         int _post_http(const server_info& si, std::string* resp) {
-            return detail::http_request("POST", "write", "", lines_, si, resp);
+            return detail::inner::http_request("POST", "write", "", lines_, si, resp);
         }
         int _send_udp(const std::string& host, int port) {
             int sock, ret = 0;
@@ -160,9 +162,9 @@ namespace influxdb_cpp {
             detail::tag_caller& meas(const std::string& m);
         };
         struct ts_caller : public builder {
-            detail::tag_caller& meas(const std::string& m)                              { lines_ += '\n'; return _m(m); }
-            int post_http(const server_info& si, std::string* resp = NULL)              { return _post_http(si, resp); }
-            int send_udp(const std::string& host, int port)                             { return _send_udp(host, port); }
+            detail::tag_caller& meas(const std::string& m)                            { lines_ += '\n'; return _m(m); }
+            int post_http(const server_info& si, std::string* resp = NULL)            { return _post_http(si, resp); }
+            int send_udp(const std::string& host, int port)                           { return _send_udp(host, port); }
         };
         struct field_caller : public ts_caller {
             detail::field_caller& field(const std::string& k, const std::string& v)     { return _f_s(',', k, v); }
@@ -178,15 +180,9 @@ namespace influxdb_cpp {
             detail::field_caller& field(const std::string& k, double v, int prec = 8)   { return _f_f(',', k, v, prec); }
             detail::ts_caller& timestamp(unsigned long long ts)                         { return _ts(ts); }
         };
-
-        unsigned char to_hex(unsigned char x);
-        void url_encode(std::string& out, const std::string& src);
-        int http_request(const char* method, const char* uri,
-            const std::string& querystring, const std::string& body, const server_info& si, std::string* resp);
     }
 }
-
 #undef FMT_BUF_LEN
 #undef FMT_APPEND
-#endif
 
+#endif
