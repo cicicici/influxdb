@@ -48,11 +48,9 @@ namespace influxdb_cpp {
 
             addr.sin_family = AF_INET;
             addr.sin_port = htons(si.port_);
-            if((addr.sin_addr.s_addr = inet_addr(si.host_.c_str())) == INADDR_NONE)
-                return -1;
+            if((addr.sin_addr.s_addr = inet_addr(si.host_.c_str())) == INADDR_NONE) return -1;
 
-            if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-                return -2;
+            if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) return -2;
 
             if(connect(sock, (struct sockaddr*)(&addr), sizeof(addr)) < 0) {
                 closesocket(sock);
@@ -83,7 +81,7 @@ namespace influxdb_cpp {
             iv[0].iov_len = len;
 
 #define _NO_MORE() (len >= (int)iv[0].iov_len && \
-            (iv[0].iov_len = recv(sock, &header[0], header.length(), len = 0)) == size_t(-1))
+    (iv[0].iov_len = recv(sock, &header[0], header.length(), len = 0)) == size_t(-1))
 #define _GET_NEXT_CHAR() (ch = _NO_MORE() ? 0 : header[len++])
 #define _LOOP_NEXT(statement) for(;;) { if(!(_GET_NEXT_CHAR())) { ret_code = -7; goto END; } statement }
 #define _UNTIL(c) _LOOP_NEXT( if(ch == c) break; )
