@@ -2,11 +2,10 @@
 
 A header-only C++ query & write client for InfluxDB.
 
-[![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](https://github.com/orca-zhang/influxdb-cpp/blob/master/LICENSE)
-[![Build Status](https://semaphoreci.com/api/v1/orca-zhang-91/influxdb-cpp/branches/master/shields_badge.svg)](https://semaphoreci.com/orca-zhang-91/influxdb-cpp)
+[![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](https://github.com/orca-zhang/influxdb-cpp/blob/master/LICENSE)  [![Build Status](https://semaphoreci.com/api/v1/orca-zhang-91/influxdb-cpp/branches/master/shields_badge.svg)](https://semaphoreci.com/orca-zhang-91/influxdb-cpp)  [![Build status](https://ci.appveyor.com/api/projects/status/gusrrn0mn67q2yaj?svg=true)](https://ci.appveyor.com/project/orca-zhang/influxdb-cpp)
 
 - Support versions:
-  - InfluxDB v0.9 ~ 1.4
+  - InfluxDB v0.9 ~ 1.7
   - Check yourself while using other versions.
 
 ### Why use influxdb-cpp?
@@ -49,20 +48,20 @@ A header-only C++ query & write client for InfluxDB.
         .tag("x", "y")
         .field("x", 10)
         .field("y", 10.3, 2)
-        .field("y", 10.3456)
+        .field("z", 10.3456)
         .field("b", !!10)
         .timestamp(1512722735522840439)
         .post_http(si);
     ```
 
-  - **NOTICE**: 
+  - **Remarks**: 
     - 3rd parameter `precision` of `field()` is optional for floating point value, and default precision is `2`. 
     - `usr` and `pwd` is optional for authorization.
 
 - The series sent is:
 
     ```
-    foo,k=v,x=y x=10i,y=10.30,y=10.35,b=t 1512722735522840439
+    foo,k=v,x=y x=10i,y=10.30,z=10.35,b=t 1512722735522840439
     ```
 
 - You could change `post_http` to `send_udp` for udp request. And only `host` and `port` is required for udp.
@@ -105,6 +104,11 @@ A header-only C++ query & write client for InfluxDB.
     ```
 
 - You can use [xpjson](https://github.com/ez8-co/xpjson) to parse the result refer to [issue #3](https://github.com/orca-zhang/influxdb-cpp/issues/3).
+
+### **Remarks for Windows**
+
+- You should **init socket environment by yourself** under Windows.
+  - FYR: [MSDN doc for `WSAStartup`](https://msdn.microsoft.com/en-us/library/windows/desktop/ms742213(v=vs.85).aspx)
 
 ### TODO
 
