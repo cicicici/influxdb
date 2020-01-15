@@ -1,5 +1,16 @@
-#include <influxdb/influxdb.hpp>
+/*
+  influxdb-cpp -- 💜 C++ client for InfluxDB.
 
+  Copyright (c) 2010-2018 <http://ez8.co> <orca.zhang@yahoo.com>
+  This library is released under the MIT License.
+
+  Please see LICENSE file or visit https://github.com/orca-zhang/influxdb-cpp for details.
+ */
+#include <sstream>
+#include <cstring>
+#include <cstdio>
+
+#include <influxdb/influxdb.hpp>
 
 namespace influxdb_cpp {
 
@@ -61,8 +72,8 @@ namespace influxdb_cpp {
 
             for(;;) {
                 iv[0].iov_len = snprintf(&header[0], len,
-                    "%s /%s?db=%s&u=%s&p=%s%s HTTP/1.1\r\nHost: %s\r\nContent-Length: %d\r\n\r\n",
-                    method, uri, si.db_.c_str(), si.usr_.c_str(), si.pwd_.c_str(),
+                    "%s /%s?db=%s&u=%s&p=%s&precision=%s%s HTTP/1.1\r\nHost: %s\r\nContent-Length: %d\r\n\r\n",
+                    method, uri, si.db_.c_str(), si.usr_.c_str(), si.pwd_.c_str(), si.precision_.c_str(),
                     querystring.c_str(), si.host_.c_str(), (int)body.length());
                 if((int)iv[0].iov_len >= len)
                     header.resize(len *= 2);
@@ -146,4 +157,3 @@ namespace influxdb_cpp {
         }
     }
 }
-

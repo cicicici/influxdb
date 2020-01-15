@@ -1,3 +1,11 @@
+/*
+  influxdb-cpp -- 💜 C++ client for InfluxDB.
+
+  Copyright (c) 2010-2018 <http://ez8.co> <orca.zhang@yahoo.com>
+  This library is released under the MIT License.
+
+  Please see LICENSE file or visit https://github.com/orca-zhang/influxdb-cpp for details.
+ */
 #ifndef __INFLUXDB_CPP_H
 #define __INFLUXDB_CPP_H
 
@@ -32,8 +40,9 @@ namespace influxdb_cpp {
         std::string db_;
         std::string usr_;
         std::string pwd_;
-        server_info(const std::string& host, int port, const std::string& db = "", const std::string& usr = "", const std::string& pwd = "")
-            : host_(host), port_(port), db_(db), usr_(usr), pwd_(pwd) {}
+        std::string precision_;
+        server_info(const std::string& host, int port, const std::string& db = "", const std::string& usr = "", const std::string& pwd = "", const std::string& precision="ms")
+            : host_(host), port_(port), db_(db), usr_(usr), pwd_(pwd), precision_(precision) {}
     };
     namespace detail {
         struct meas_caller;
